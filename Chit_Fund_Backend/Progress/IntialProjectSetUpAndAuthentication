@@ -1,0 +1,281 @@
+# Authentication & Onboarding – Initial Backend Implementation
+
+## 1. Objective
+
+The initial backend implementation establishes the foundation for authentication and user identity management in the Digital Chit Fund Management System.
+
+The design separates common authentication information from customer and staff-specific business information.
+
+---
+
+## 2. User Entity
+
+A common `User` entity is created to store authentication-related information.
+
+### User fields
+
+- `id` – Primary key
+- `mobile` – User's mobile number
+- `email` – User's email address
+- `passwordHash` – Stores the encrypted/hashed password
+- `userType` – Identifies whether the user is a CUSTOMER or STAFF
+- `status` – Represents the account status
+- `createdAt` – Account creation timestamp
+- `updatedAt` – Last update timestamp
+
+### User Type
+
+The `UserType` enum currently contains:
+
+```text
+CUSTOMER
+STAFF
+```
+
+The `userType` helps the backend determine the category of the authenticated user.
+
+---
+
+## 3. User Status
+
+The `UserStatus` enum was created to represent the lifecycle/status of a user account.
+
+```text
+PENDING
+ACTIVE
+INACTIVE
+BLOCKED
+```
+
+For example, a newly registered user can initially remain in `PENDING` status until the registration/OTP verification process is completed.
+
+---
+
+## 4. Customer Entity
+
+The `Customer` entity represents customer-specific business information.
+
+It is separate from the `User` entity because customer information will be required throughout the entire application, not only during authentication.
+
+### Current fields
+
+- `id` – Primary key
+- `user` – Reference to the associated User
+- `name` – Customer name
+
+The relationship is:
+
+```text
+User 1 ───────── 1 Customer
+```
+
+The `customers.user_id` column references `users.id`.
+
+Additional customer-related fields can be added later when the corresponding customer/business requirements are implemented.
+
+---
+
+## 5. Staff Entity
+
+The `Staff` entity represents staff-specific business information.
+
+### Current fields
+
+- `id` – Primary key
+- `user` – Reference to the associated User
+- `name` – Staff name
+- `employeeCode` – Unique employee identifier
+- `role` – Staff role
+
+The relationship is:
+
+```text
+User 1 ───────── 1 Staff
+```
+
+The `staff.user_id` column references `users.id`.
+
+---
+
+## 6. Staff Roles
+
+The `StaffRole` enum was created for staff authorization.
+
+Current roles:
+
+```text
+AGENT
+MANAGER
+ADMIN
+SUPER_ADMIN
+```
+
+Therefore, the backend can determine a staff member's identity as:
+
+```text
+User
+  ↓
+userType = STAFF
+  ↓
+Staff
+  ↓
+StaffRole
+```
+
+For a customer:
+
+```text
+User
+  ↓
+userType = CUSTOMER
+  ↓
+Customer
+```
+
+---
+
+## 7. Database Relationships
+
+The current conceptual structure is:
+
+```text
+                    USERS
+                      |
+              ┌───────┴───────┐
+              |               |
+          CUSTOMER          STAFF
+              |               |
+         customers          staff
+                              |
+                             role
+```
+
+`User` contains the common authentication identity, while `Customer` and `Staff` contain their respective business information.
+
+This separation allows authentication logic to remain independent from customer and staff business modules.
+
+---
+
+## 8. Repository Layer
+
+Spring Data JPA repositories were created for database access.
+
+### UserRepository
+
+Provides operations such as:
+
+findByMobile()
+findByEmail()
+existsByMobile()
+existsByEmail()
+
+These are required for registration and login using either mobile number or email.
+
+### CustomerRepository
+
+Provides:
+
+```text
+findByUserId()
+existsByUserId()
+```
+
+These methods retrieve or verify the customer profile associated with a User.
+
+### StaffRepository
+
+Provides:
+
+```text
+findByUserId()
+existsByUserId()
+findByEmployeeCode()
+```
+
+These methods retrieve staff information and verify staff identity.
+
+All repositories extend:
+
+```text
+JpaRepository<Entity, Long>
+```
+
+Therefore, standard CRUD operations such as `save()`, `findById()`, `findAll()`, and `delete()` are provided automatically by Spring Data JPA.
+
+---
+
+## 9. Database Constraints
+
+The `users` table has unique constraints on:
+
+```text
+mobile
+email
+```
+
+This prevents duplicate mobile numbers or email addresses from being registered.
+
+The `user_id` field in both `customers` and `staff` is unique, enforcing a one-to-one relationship between a User and its corresponding Customer or Staff profile.
+
+---
+
+## 10. Current Architecture
+
+The current module structure is:
+
+```text
+module
+├── auth
+│   ├── entity
+│   │   ├── User.java
+│   │   ├── UserStatus.java
+│   │   └── UserType.java
+│   │
+│   └── repository
+│       └── UserRepository.java
+│
+├── customer
+│   ├── entity
+│   │   └── Customer.java
+│   └── repository
+│       └── CustomerRepository.java
+│
+└── staff
+    ├── entity
+    │   ├── Staff.java
+    │   └── StaffRole.java
+    │
+    └── repository
+        └── StaffRepository.java
+```
+
+---
+
+## 11. Implementation Status
+
+Completed:
+
+- User entity
+- User status management
+- User type management
+- Customer entity
+- Staff entity
+- Staff role management
+- User repository
+- Customer repository
+- Staff repository
+- User–Customer relationship
+- User–Staff relationship
+- Basic database constraints
+
+Not implemented yet:
+
+- Customer registration
+- OTP generation and verification
+- Password handling during registration
+- Login
+- JWT authentication
+- Refresh token management
+- Role-based authorization
+
+These will be implemented in the next stages of the Authentication & Onboarding module.
