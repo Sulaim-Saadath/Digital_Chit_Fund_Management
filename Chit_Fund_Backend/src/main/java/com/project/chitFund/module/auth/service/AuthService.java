@@ -75,4 +75,21 @@ public class AuthService {
 		// Generate OTP
 		otpService.generateOtp(savedUser);
 	}
+	
+	public void verifyCustomerOtp(String mobile, String otp) {
+
+	    // Find user using mobile number
+	    User user = userRepository.findByMobile(mobile)
+	            .orElseThrow(() -> new RuntimeException("User not found"));
+
+	    // Verify OTP
+	    otpService.verifyOtp(user, otp);
+
+	    // OTP verified successfully
+	    user.setStatus(UserStatus.ACTIVE);
+
+	    user.setUpdatedAt(LocalDateTime.now());
+
+	    userRepository.save(user);
+	}
 }

@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.project.chitFund.module.auth.dto.RegisterOtpRequest;
 import com.project.chitFund.module.auth.dto.RegisterRequest;
 import com.project.chitFund.module.auth.service.AuthService;
 
@@ -23,5 +24,13 @@ public class AuthController {
 		authService.registerCustomer(request);
 
 		return ResponseEntity.ok("Customer registration initiated");
+	}
+
+	@PostMapping("/verify-otp")
+	public ResponseEntity<String> verifyOtp(@RequestBody RegisterOtpRequest request) {
+
+		authService.verifyCustomerOtp(request.getMobile(), request.getOtp());
+
+		return ResponseEntity.ok("OTP verified successfully. Registration completed.");
 	}
 }
