@@ -2,6 +2,7 @@ package com.project.chitFund.module.auth.service;
 
 import java.time.LocalDateTime;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.project.chitFund.module.auth.dto.RegisterRequest;
@@ -17,10 +18,15 @@ public class AuthService {
 
 	private final UserRepository userRepository;
 	private final CustomerRepository customerRepository;
+	private final OtpService otpService;
+	private final PasswordEncoder passwordEncoder;
 
-	public AuthService(UserRepository userRepository, CustomerRepository customerRepository) {
+	public AuthService(UserRepository userRepository, CustomerRepository customerRepository, OtpService otpService, PasswordEncoder passwordEncoder) {
+
 		this.userRepository = userRepository;
 		this.customerRepository = customerRepository;
+		this.otpService = otpService;
+		this.passwordEncoder = passwordEncoder;
 	}
 
 	public void registerCustomer(RegisterRequest request) {
@@ -51,7 +57,7 @@ public class AuthService {
 
 		user.setMobile(request.getMobile());
 		user.setEmail(request.getEmail());
-		user.setPasswordHash(request.getPassword());
+		user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
 		user.setUserType(UserType.CUSTOMER);
 		user.setStatus(UserStatus.PENDING);
 		user.setCreatedAt(LocalDateTime.now());
@@ -66,5 +72,7 @@ public class AuthService {
 		customer.setName(request.getName());
 
 		customerRepository.save(customer);
+		// Generate OTP
+		otpService.generateOtp(savedUser);
 	}
 }
