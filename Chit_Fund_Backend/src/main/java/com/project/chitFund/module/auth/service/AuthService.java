@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.project.chitFund.module.auth.dto.LoginRequest;
 import com.project.chitFund.module.auth.dto.RegisterRequest;
 import com.project.chitFund.module.auth.entity.User;
 import com.project.chitFund.module.auth.entity.UserStatus;
@@ -21,7 +22,8 @@ public class AuthService {
 	private final OtpService otpService;
 	private final PasswordEncoder passwordEncoder;
 
-	public AuthService(UserRepository userRepository, CustomerRepository customerRepository, OtpService otpService, PasswordEncoder passwordEncoder) {
+	public AuthService(UserRepository userRepository, CustomerRepository customerRepository, OtpService otpService,
+			PasswordEncoder passwordEncoder) {
 
 		this.userRepository = userRepository;
 		this.customerRepository = customerRepository;
@@ -75,21 +77,35 @@ public class AuthService {
 		// Generate OTP
 		otpService.generateOtp(savedUser);
 	}
-	
+
 	public void verifyCustomerOtp(String mobile, String otp) {
 
-	    // Find user using mobile number
-	    User user = userRepository.findByMobile(mobile)
-	            .orElseThrow(() -> new RuntimeException("User not found"));
+		// Find user using mobile number
+		User user = userRepository.findByMobile(mobile).orElseThrow(() -> new RuntimeException("User not found"));
 
-	    // Verify OTP
-	    otpService.verifyOtp(user, otp);
+		// Verify OTP
+		otpService.verifyOtp(user, otp);
 
-	    // OTP verified successfully
-	    user.setStatus(UserStatus.ACTIVE);
+		// OTP verified successfully
+		user.setStatus(UserStatus.ACTIVE);
 
-	    user.setUpdatedAt(LocalDateTime.now());
+		user.setUpdatedAt(LocalDateTime.now());
 
-	    userRepository.save(user);
+		userRepository.save(user);
+	}
+
+	public String login(LoginRequest request) {
+
+		User user = userRepository.findByEmail(request.getEmail()).orElse(null);
+		if (user == null) {
+			return "Invalid email or password";
+		}
+		if (user.getStatus() != UserStatus.ACTIVE) {
+			return "User account is not active";
+		}
+		if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+			return "Invalid email or password";
+		}
+		return "Login successful";
 	}
 }
