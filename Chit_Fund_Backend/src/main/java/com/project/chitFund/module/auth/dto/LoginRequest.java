@@ -1,23 +1,28 @@
 package com.project.chitFund.module.auth.dto;
 
+import jakarta.validation.constraints.NotBlank;
+
 public class LoginRequest {
 
-	private String email;
-	private String password;
+    @NotBlank(message = "Mobile number or email is required")
+    private String identifier;
 
-	public String getEmail() {
-		return email;
-	}
+    @NotBlank(message = "Password is required")
+    private String password;
 
-	public void setEmail(String email) {
-		this.email = email;
-	}
+    public String getIdentifier() {
+        return identifier;
+    }
 
-	public String getPassword() {
-		return password;
-	}
+    public void setIdentifier(String identifier) {
+        this.identifier = identifier;
+    }
 
-	public void setPassword(String password) {
-		this.password = password;
-	}
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
 }

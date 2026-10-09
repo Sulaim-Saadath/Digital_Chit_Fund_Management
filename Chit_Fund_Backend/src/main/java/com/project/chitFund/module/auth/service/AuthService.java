@@ -103,9 +103,16 @@ public class AuthService {
 	}
 
 	public LoginResponse login(LoginRequest request) {
-		User user = userRepository.findByEmail(request.getEmail()).orElse(null);
-		if (user == null) {
-			throw new IllegalArgumentException("Invalid email or password");
+		String identifier = request.getIdentifier().trim();
+
+		User user;
+
+		if (identifier.contains("@")) {
+			user = userRepository.findByEmail(identifier.toLowerCase())
+					.orElseThrow(() -> new RuntimeException("Invalid email or password"));
+		} else {
+			user = userRepository.findByMobile(identifier)
+					.orElseThrow(() -> new RuntimeException("Invalid email or password"));
 		}
 
 		if (user.getStatus() != UserStatus.ACTIVE) {
