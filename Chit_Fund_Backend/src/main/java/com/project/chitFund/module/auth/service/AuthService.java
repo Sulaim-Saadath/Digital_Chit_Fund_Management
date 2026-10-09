@@ -6,13 +6,17 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.project.chitFund.module.auth.dto.LoginRequest;
+import com.project.chitFund.module.auth.dto.LoginResponse;
+import com.project.chitFund.module.auth.dto.MeResponse;
 import com.project.chitFund.module.auth.dto.RegisterRequest;
 import com.project.chitFund.module.auth.entity.User;
 import com.project.chitFund.module.auth.entity.UserStatus;
 import com.project.chitFund.module.auth.entity.UserType;
 import com.project.chitFund.module.auth.repository.UserRepository;
+import com.project.chitFund.module.auth.security.JwtService;
 import com.project.chitFund.module.customer.entity.Customer;
 import com.project.chitFund.module.customer.repository.CustomerRepository;
+import com.project.chitFund.module.staff.repository.StaffRepository;
 
 @Service
 public class AuthService {
@@ -21,14 +25,18 @@ public class AuthService {
 	private final CustomerRepository customerRepository;
 	private final OtpService otpService;
 	private final PasswordEncoder passwordEncoder;
+	private final JwtService jwtService;
+	private final StaffRepository staffRepository;
 
 	public AuthService(UserRepository userRepository, CustomerRepository customerRepository, OtpService otpService,
-			PasswordEncoder passwordEncoder) {
+			PasswordEncoder passwordEncoder, JwtService jwtService, StaffRepository staffRepository) {
 
 		this.userRepository = userRepository;
 		this.customerRepository = customerRepository;
 		this.otpService = otpService;
 		this.passwordEncoder = passwordEncoder;
+		this.jwtService = jwtService;
+		this.staffRepository = staffRepository;
 	}
 
 	public void registerCustomer(RegisterRequest request) {
@@ -94,18 +102,36 @@ public class AuthService {
 		userRepository.save(user);
 	}
 
-	public String login(LoginRequest request) {
-
+	public LoginResponse login(LoginRequest request) {
 		User user = userRepository.findByEmail(request.getEmail()).orElse(null);
 		if (user == null) {
-			return "Invalid email or password";
+			throw new IllegalArgumentException("Invalid email or password");
 		}
+
 		if (user.getStatus() != UserStatus.ACTIVE) {
-			return "User account is not active";
+			throw new IllegalArgumentException("User account is not active");
 		}
+
 		if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-			return "Invalid email or password";
+			throw new IllegalArgumentException("Invalid email or password");
 		}
-		return "Login successful";
+		String token = jwtService.generateToken(user);
+		String role = null;
+		if (user.getUserType() == UserType.STAFF) {
+			role = staffRepository.findByUser(user)
+					.orElseThrow(() -> new IllegalArgumentException("Staff record not found")).getRole().name();
+		}
+		return new LoginResponse(token, user.getUserType().name(), role);
+	}
+
+	public MeResponse getCurrentUser(String userId) {
+		Long id = Long.parseLong(userId);
+		User user = userRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("User not found"));
+		String role = null;
+		if (user.getUserType() == UserType.STAFF) {
+			role = staffRepository.findByUser(user)
+					.orElseThrow(() -> new IllegalArgumentException("Staff record not found")).getRole().name();
+		}
+		return new MeResponse(user.getId(), user.getEmail(), user.getUserType().name(), role);
 	}
 }

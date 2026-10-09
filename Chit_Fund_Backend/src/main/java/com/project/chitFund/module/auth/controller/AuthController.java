@@ -1,10 +1,12 @@
 package com.project.chitFund.module.auth.controller;
 
-import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import com.project.chitFund.module.auth.dto.LoginRequest;
+import com.project.chitFund.module.auth.dto.LoginResponse;
+import com.project.chitFund.module.auth.dto.MeResponse;
 import com.project.chitFund.module.auth.dto.RegisterOtpRequest;
 import com.project.chitFund.module.auth.dto.RegisterRequest;
 import com.project.chitFund.module.auth.service.AuthService;
@@ -20,28 +22,42 @@ public class AuthController {
 	}
 
 	@PostMapping("/register")
-	public ResponseEntity<String> register(@Valid @RequestBody RegisterRequest request) {
-
-		authService.registerCustomer(request);
-
-		return ResponseEntity.ok("Customer registration initiated");
+	public ResponseEntity<String> register(@RequestBody RegisterRequest request) {
+		try {
+			authService.registerCustomer(request);
+			return ResponseEntity.ok("Registration successful");
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.badRequest().body(e.getMessage());
+		}
 	}
 
 	@PostMapping("/verify-otp")
 	public ResponseEntity<String> verifyOtp(@RequestBody RegisterOtpRequest request) {
-
-		authService.verifyCustomerOtp(request.getMobile(), request.getOtp());
-
-		return ResponseEntity.ok("OTP verified successfully. Registration completed.");
+		try {
+			authService.verifyCustomerOtp(request.getMobile(), request.getOtp());
+			return ResponseEntity.ok("OTP verified successfully");
+		} catch (RuntimeException e) {
+			return ResponseEntity.badRequest().body(e.getMessage());
+		}
 	}
 
 	@PostMapping("/login")
-	public ResponseEntity<String> login(@RequestBody LoginRequest request) {
-
-		String response = authService.login(request);
-		if (response.equals("Login successful")) {
+	public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+		try {
+			LoginResponse response = authService.login(request);
 			return ResponseEntity.ok(response);
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.badRequest().body(e.getMessage());
 		}
-		return ResponseEntity.badRequest().body(response);
+	}
+
+	@GetMapping("/me")
+	public ResponseEntity<?> getCurrentUser(Authentication authentication) {
+		try {
+			MeResponse response = authService.getCurrentUser(authentication.getName());
+			return ResponseEntity.ok(response);
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.badRequest().body(e.getMessage());
+		}
 	}
 }

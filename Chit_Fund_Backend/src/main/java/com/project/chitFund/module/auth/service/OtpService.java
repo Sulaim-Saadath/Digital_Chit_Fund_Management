@@ -75,9 +75,7 @@ public class OtpService {
 
 		// 5. Correct OTP
 		otpVerification.setVerified(true);
-
 		otpVerificationRepository.save(otpVerification);
-
 		return true;
 	}
 }
