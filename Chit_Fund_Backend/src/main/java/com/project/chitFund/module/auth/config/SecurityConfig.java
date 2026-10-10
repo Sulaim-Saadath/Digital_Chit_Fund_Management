@@ -33,9 +33,9 @@ public class SecurityConfig {
 		http.csrf(csrf -> csrf.disable())
 
 				.cors(cors -> cors.configurationSource(corsConfigurationSource()))
-				.authorizeHttpRequests(
-						auth -> auth.requestMatchers("/api/auth/register", "/api/auth/verify-otp", "/api/auth/login")
-								.permitAll().anyRequest().authenticated())
+				.authorizeHttpRequests(auth -> auth.requestMatchers("/api/auth/register", "/api/auth/verify-otp",
+						"/api/auth/login", "/api/auth/forgot-password", "/api/auth/verify-recovery-otp",
+						"/api/auth/reset-password").permitAll().anyRequest().authenticated())
 				.exceptionHandling(
 						exception -> exception.authenticationEntryPoint((request, response, authException) -> {
 							response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);

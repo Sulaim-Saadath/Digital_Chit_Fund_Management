@@ -33,6 +33,10 @@ public class OtpVerification {
 	@Column(name = "created_at", nullable = false)
 	private LocalDateTime createdAt;
 
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false, length = 30)
+	private OtpPurpose purpose;
+
 	// Getters and Setters
 
 	public Long getId() {
@@ -98,4 +102,13 @@ public class OtpVerification {
 	public void setCreatedAt(LocalDateTime createdAt) {
 		this.createdAt = createdAt;
 	}
+
+	public OtpPurpose getPurpose() {
+		return purpose;
+	}
+
+	public void setPurpose(OtpPurpose purpose) {
+		this.purpose = purpose;
+	}
+
 }

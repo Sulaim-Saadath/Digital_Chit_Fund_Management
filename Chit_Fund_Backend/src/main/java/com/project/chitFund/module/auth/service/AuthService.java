@@ -9,9 +9,12 @@ import com.project.chitFund.module.auth.dto.LoginRequest;
 import com.project.chitFund.module.auth.dto.LoginResponse;
 import com.project.chitFund.module.auth.dto.MeResponse;
 import com.project.chitFund.module.auth.dto.RegisterRequest;
+import com.project.chitFund.module.auth.entity.OtpPurpose;
+import com.project.chitFund.module.auth.entity.OtpVerification;
 import com.project.chitFund.module.auth.entity.User;
 import com.project.chitFund.module.auth.entity.UserStatus;
 import com.project.chitFund.module.auth.entity.UserType;
+import com.project.chitFund.module.auth.repository.OtpVerificationRepository;
 import com.project.chitFund.module.auth.repository.UserRepository;
 import com.project.chitFund.module.auth.security.JwtService;
 import com.project.chitFund.module.customer.entity.Customer;
@@ -27,9 +30,11 @@ public class AuthService {
 	private final PasswordEncoder passwordEncoder;
 	private final JwtService jwtService;
 	private final StaffRepository staffRepository;
+	private final OtpVerificationRepository otpVerificationRepository;
 
 	public AuthService(UserRepository userRepository, CustomerRepository customerRepository, OtpService otpService,
-			PasswordEncoder passwordEncoder, JwtService jwtService, StaffRepository staffRepository) {
+			PasswordEncoder passwordEncoder, JwtService jwtService, StaffRepository staffRepository,
+			OtpVerificationRepository otpVerificationRepository) {
 
 		this.userRepository = userRepository;
 		this.customerRepository = customerRepository;
@@ -37,6 +42,7 @@ public class AuthService {
 		this.passwordEncoder = passwordEncoder;
 		this.jwtService = jwtService;
 		this.staffRepository = staffRepository;
+		this.otpVerificationRepository = otpVerificationRepository;
 	}
 
 	public void registerCustomer(RegisterRequest request) {
@@ -83,7 +89,7 @@ public class AuthService {
 
 		customerRepository.save(customer);
 		// Generate OTP
-		otpService.generateOtp(savedUser);
+		otpService.generateOtp(savedUser, OtpPurpose.REGISTRATION);
 	}
 
 	public void verifyCustomerOtp(String mobile, String otp) {
@@ -92,7 +98,7 @@ public class AuthService {
 		User user = userRepository.findByMobile(mobile).orElseThrow(() -> new RuntimeException("User not found"));
 
 		// Verify OTP
-		otpService.verifyOtp(user, otp);
+		otpService.verifyOtp(user, otp, OtpPurpose.REGISTRATION);
 
 		// OTP verified successfully
 		user.setStatus(UserStatus.ACTIVE);
@@ -141,4 +147,83 @@ public class AuthService {
 		}
 		return new MeResponse(user.getId(), user.getEmail(), user.getUserType().name(), role);
 	}
+
+	public void requestPasswordRecovery(String identifier) {
+
+		if (identifier == null || identifier.isBlank()) {
+			throw new IllegalArgumentException("Email or mobile number is required");
+		}
+
+		identifier = identifier.trim();
+
+		User user;
+
+		if (identifier.contains("@")) {
+			user = userRepository.findByEmail(identifier.toLowerCase()).orElseThrow(
+					() -> new IllegalArgumentException("If the account exists, a recovery OTP will be generated"));
+		} else {
+			user = userRepository.findByMobile(identifier).orElseThrow(
+					() -> new IllegalArgumentException("If the account exists, a recovery OTP will be generated"));
+		}
+
+		if (user.getStatus() != UserStatus.ACTIVE) {
+			throw new IllegalArgumentException("If the account exists, a recovery OTP will be generated");
+		}
+
+		otpService.generateOtp(user, OtpPurpose.PASSWORD_RECOVERY);
+	}
+
+	public void verifyRecoveryOtp(String identifier, String otp) {
+
+		User user = findUserByIdentifier(identifier);
+
+		otpService.verifyOtp(user, otp, OtpPurpose.PASSWORD_RECOVERY);
+	}
+
+	public void resetPassword(String identifier, String newPassword) {
+
+		if (newPassword == null || newPassword.isBlank()) {
+			throw new IllegalArgumentException("New password is required");
+		}
+
+		User user = findUserByIdentifier(identifier);
+
+		OtpVerification recoveryOtp = otpVerificationRepository
+				.findTopByUserAndPurposeOrderByCreatedAtDesc(user, OtpPurpose.PASSWORD_RECOVERY)
+				.orElseThrow(() -> new IllegalArgumentException("Recovery OTP not found"));
+
+		if (!recoveryOtp.isVerified()) {
+			throw new IllegalArgumentException("Please verify the recovery OTP first");
+		}
+
+		if (LocalDateTime.now().isAfter(recoveryOtp.getExpiresAt())) {
+			throw new IllegalArgumentException("Recovery OTP has expired");
+		}
+
+		user.setPasswordHash(passwordEncoder.encode(newPassword));
+		user.setUpdatedAt(LocalDateTime.now());
+		userRepository.save(user);
+
+		// Invalidate the verified recovery OTP after resetting the password.
+		recoveryOtp.setExpiresAt(LocalDateTime.now().minusSeconds(1));
+		otpVerificationRepository.save(recoveryOtp);
+	}
+
+	private User findUserByIdentifier(String identifier) {
+
+		if (identifier == null || identifier.isBlank()) {
+			throw new IllegalArgumentException("Email or mobile number is required");
+		}
+
+		identifier = identifier.trim();
+
+		if (identifier.contains("@")) {
+			return userRepository.findByEmail(identifier.toLowerCase())
+					.orElseThrow(() -> new IllegalArgumentException("Invalid recovery details"));
+		}
+
+		return userRepository.findByMobile(identifier)
+				.orElseThrow(() -> new IllegalArgumentException("Invalid recovery details"));
+	}
+
 }
